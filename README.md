@@ -4,7 +4,7 @@ Recipe costing and menu engineering for independent restaurants.
 
 Most owners and chefs know their sales to the dollar and their plate cost roughly, if at all. The usual options are a paid back-office platform or a spreadsheet that breaks the day a sauce goes inside another sauce or a supplier changes a price. Menu Margin takes the files you already have (a supplier price list, your recipes, a POS item-sales export) and turns them into plate cost, food-cost %, and a menu-engineering matrix with a concrete action for every dish.
 
-**Live:** https://menu-margin.vercel.app
+**Live:** https://menu-margin-two.vercel.app
 
 ## Features
 
