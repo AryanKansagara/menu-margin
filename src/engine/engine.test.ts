@@ -251,8 +251,16 @@ test('pack-size change normalises price to the current pack', () => {
   const d = diffPrices(i, [{ line: 2, name: 'Butter', code: '', price: 100, supplier: '', packQty: 18, packUnit: 'lb' }])
   near(d.rows[0].next!, 200)
   assert.equal(d.rows[0].kind, 'up')
+  // 8 kg is 17.637 lb: convertible, so normalised to the 36 lb case.
   const d2 = diffPrices(i, [{ line: 2, name: 'Butter', code: '', price: 100, supplier: '', packQty: 8, packUnit: 'kg' }])
-  assert.equal(d2.rows[0].kind, 'pack')
+  near(d2.rows[0].next!, (100 / (8000 / 453.59237)) * 36, 1e-9)
+  // Same pack written in another unit is not a pack change.
+  const d3 = diffPrices(i, [{ line: 2, name: 'Butter', code: '', price: 180, supplier: '', packQty: 36 * 0.45359237, packUnit: 'kg' }])
+  assert.equal(d3.rows[0].kind, 'same')
+  assert.equal(d3.rows[0].note, undefined)
+  // Counted packs cannot be compared to a weighed case without an each-weight.
+  const d4 = diffPrices(i, [{ line: 2, name: 'Butter', code: '', price: 100, supplier: '', packQty: 40, packUnit: 'ea' }])
+  assert.equal(d4.rows[0].kind, 'pack')
 })
 
 test('spike alerts list dishes that crossed the target with the driver', () => {

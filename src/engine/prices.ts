@@ -1,7 +1,7 @@
 import { costMenu, type ItemCost } from './costing.ts'
 import { findHeaderRow, norm, parseCsv, parseNumber, pickColumn, rankMatches } from './csv.ts'
 import type { Ingredient, ProjectData } from './types.ts'
-import { parseUnit } from './units.ts'
+import { convert, parseUnit } from './units.ts'
 
 export interface PriceMapping {
   name: number
@@ -70,7 +70,7 @@ export function parsePriceList(text: string, mapping?: PriceMapping): PriceParse
   const all = parseCsv(text)
   const hr = findHeaderRow(all, ['description', 'price', 'item', 'sku', 'supplier', 'pack', 'uom', 'unit price'])
   const headers = all[hr] ?? []
-  const m = { size: -1, ...(mapping ?? detectPriceColumns(headers)) }
+  const m = mapping ?? detectPriceColumns(headers)
   const issues: PriceParse['issues'] = []
   const lines: PriceLine[] = []
   if (m.name < 0 && m.code < 0) issues.push({ line: hr + 1, message: 'Map a description or item-code column' })
@@ -146,10 +146,14 @@ export function diffPrices(ingredients: Ingredient[], lines: PriceLine[], overri
     let kind: DiffKind
     if (l.packQty && Math.abs(l.packQty - ing.packQty) > 1e-9) {
       const pu = l.packUnit ? parseUnit(l.packUnit) : ing.packUnit
-      if (pu === ing.packUnit) {
+      // The file's pack expressed in the ingredient's pack unit (4 gal -> 15.14 l, 30 lb -> 13.6 kg).
+      const inIngUnit = pu ? convert(l.packQty, pu, ing.packUnit, ing) : null
+      if (inIngUnit && Math.abs(inIngUnit - ing.packQty) < 1e-6 * ing.packQty) {
+        // Same pack, just written differently.
+      } else if (inIngUnit) {
         // Normalise to the ingredient's current pack so price history stays comparable.
-        next = (l.price / l.packQty) * ing.packQty
-        note = `Pack changed ${ing.packQty} → ${l.packQty} ${l.packUnit ?? ''}; price normalised to current pack`.trim()
+        next = (l.price / inIngUnit) * ing.packQty
+        note = `Pack changed ${ing.packQty} ${ing.packUnit} → ${l.packQty} ${l.packUnit ?? ''}; price normalised to current pack`.replace(/ ;/, ';')
       } else note = `Pack ${l.packQty} ${l.packUnit ?? ''} differs from ${ing.packQty} ${ing.packUnit}; check before applying`
     }
     const pct = ing.price > 0 ? ((next - ing.price) / ing.price) * 100 : 0

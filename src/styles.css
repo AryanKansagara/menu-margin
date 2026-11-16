@@ -767,3 +767,4 @@ tr.detail > td { background: var(--bg-2); padding: 18px 20px; }
   @page { margin: 14mm; }
 }
 .hero .dot-on .dot-label { fill: #fff; stroke: #2a1a17; }
+.cmp-pick select { min-width: 0; max-width: 100%; }

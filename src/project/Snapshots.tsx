@@ -55,7 +55,7 @@ export default function Snapshots() {
           <section className="card">
             <div className="card-head">
               <h2>Compare</h2>
-              <div className="inline">
+              <div className="inline wrap-gap cmp-pick">
                 <select value={a} onChange={(e) => setA(e.target.value)} aria-label="From">{list.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}<option value="current">Now</option></select>
                 <Icon name="chev" size={16} />
                 <select value={b} onChange={(e) => setB(e.target.value)} aria-label="To"><option value="current">Now</option>{list.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}</select>

@@ -11,9 +11,11 @@ Most owners and chefs know their sales to the dollar and their plate cost roughl
 - **Ingredients** with purchase unit, pack size, price, supplier code, trim yield, and unit conversion across weight, volume and count (per-ingredient density and each-weight). Price history from repeated imports.
 - **Recipes** with sub-recipes nested to any depth (cycle detection), batch yield and portions. Plate cost, food-cost %, suggested price for a target, contribution margin, cost breakdown by ingredient.
 - **Menu** items linked to recipes, with modifiers weighted by attach rate and POS-name aliases.
-- **Sales import** from Lightspeed Restaurant K-Series (Product Mix export), L-Series (Export Data, Receipt items) or any POS CSV. Format detection, column mapping, validation report with line numbers, fuzzy matching with a confirm step.
+- **Sales import** from Lightspeed Restaurant K-Series (Product Mix export), L-Series (Export Data, Receipt items), Toast (All items / Product Mix and ItemSelectionDetails.csv), Square (Item Sales detail CSV) or any POS CSV. Void flags and refunds are handled per format. Format detection, column mapping, validation report with line numbers, fuzzy matching with a confirm step.
 - **Menu engineering** (Kasavana–Smith): Stars, Plowhorses, Puzzles and Dogs with a specific recommendation per item, per-category analysis, and a price what-if with editable elasticity.
 - **Theoretical vs actual** food cost from opening inventory, purchases and closing inventory.
+- **Distributor price lists** with foodservice pack notation (`6/5 LB`, `4/1 GAL`, Pack + Size columns, `Case $`), with pack changes normalised across units.
+- **Reference densities and each-weights** from USDA FoodData Central (SR Legacy, public domain), offered in the ingredient editor with the FDC id.
 - **Supplier spike alerts**: import a price list, see the diff, and see which dishes cross your food-cost target, by how much, and which ingredient caused it.
 - **Outputs**: printable recipe cards (scaled), an owner’s monthly report, an order guide and prep list from forecast covers, and CSV exports.
 - **Workspace**: multiple projects stored locally (IndexedDB), monthly snapshots with compare, undo, optional sign-in to sync across devices.
