@@ -3,6 +3,8 @@ import { applyPrices, diffPrices, parsePriceList, spikeAlerts, type PriceLine, t
 import { samplePriceListCsv } from '../engine/sample.ts'
 import type { Ingredient, PriceImport } from '../engine/types.ts'
 import { parseUnit } from '../engine/units.ts'
+import { refDensity, refEach } from '../engine/reference.ts'
+import { isoDates } from '../engine/sales.ts'
 import { DropZone, Empty, Icon, Link, money, pct, signed, toast } from '../ui.tsx'
 import { uid } from '../actions.ts'
 import { useP } from './ctx.ts'
@@ -14,7 +16,8 @@ function newIngredient(l: PriceLine): Ingredient {
   return {
     id: uid('ing'), name: titleCase(l.name || l.code), category: 'Uncategorized', supplier: l.supplier, code: l.code || undefined,
     purchaseUnit: 'case', packQty: l.packQty ?? 1, packUnit: unit === 'portion' ? 'ea' : unit, price: l.price, yieldPct: 100,
-    history: [{ date: l.date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10), price: l.price, source: 'Price list import' }],
+    densityGPerMl: refDensity(l.name)?.value, eachG: refEach(l.name)?.value,
+    history: [{ date: isoDates([l.date ?? ''])[0] ?? new Date().toISOString().slice(0, 10), price: l.price, source: 'Price list import' }],
   }
 }
 
@@ -38,8 +41,8 @@ function Importer({ onDone }: { onDone: () => void }) {
   const load = (text: string, name: string) => {
     const p = parsePriceList(text)
     setFile({ text, name }); setMap(p.mapping); setOverrides({})
-    const d = p.lines.find((l) => l.date)?.date
-    if (d && /^\d{4}-\d{2}-\d{2}/.test(d)) setDate(d.slice(0, 10))
+    const d = isoDates(p.lines.map((l) => l.date ?? '').filter(Boolean)).sort().pop()
+    if (d) setDate(d)
     // New lines become ingredients by default only on a fresh project.
     const fresh = data.ingredients.length === 0
     setCreate(Object.fromEntries(p.lines.map((l) => [l.line, fresh])))
@@ -85,7 +88,7 @@ function Importer({ onDone }: { onDone: () => void }) {
     <div className="stack">
       <div className="notice"><Icon name="check" /> {file.name} · {parsed.lines.length} priced lines{parsed.issues.length ? ` · ${parsed.issues.length} problems` : ''}</div>
       <details className="mapbox"><summary>Column mapping</summary>
-        <div className="fgrid fgrid-3">{colSel('name', 'Description')}{colSel('code', 'Item code')}{colSel('price', 'Price')}{colSel('supplier', 'Supplier')}{colSel('packQty', 'Pack size')}{colSel('packUnit', 'Pack unit')}{colSel('date', 'Date')}</div>
+        <div className="fgrid fgrid-3">{colSel('name', 'Description')}{colSel('code', 'Item code')}{colSel('price', 'Price')}{colSel('supplier', 'Supplier')}{colSel('packQty', 'Pack (count or 6/5 LB)')}{colSel('size', 'Unit size')}{colSel('packUnit', 'Pack unit')}{colSel('date', 'Date')}</div>
       </details>
       {parsed.issues.length > 0 && <details className="issues-list" open><summary>Validation report</summary><ul>{parsed.issues.map((x, i) => <li key={i}><span className="mono">line {x.line}</span> {x.message}</li>)}</ul></details>}
       <div className="report">

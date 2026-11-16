@@ -7,6 +7,8 @@ const TOC = [
   ['formats', 'Sales exports'],
   ['k-series', 'Lightspeed K-Series'],
   ['l-series', 'Lightspeed L-Series'],
+  ['toast', 'Toast'],
+  ['square', 'Square'],
   ['generic', 'Any other POS'],
   ['prices', 'Supplier price lists'],
   ['costing', 'How costing works'],
@@ -82,12 +84,22 @@ export default function Docs() {
           </tbody></table>
           <p className="fine muted">The L-Series Products report is also accepted if it has a product name and a quantity column; map them in step 1.</p>
 
+          <h3 id="toast">Toast</h3>
+          <p>Two Toast files are recognised by their headers, as documented in Toast’s data export field reference (<a href="https://doc.toasttab.com/doc/platformguide/adminDataExportFieldReference.html">doc.toasttab.com</a>, checked November 2026):</p>
+          <ul>
+            <li><b>Product Mix / All items</b> (<code>AllItemsReport.csv</code>): <code>Menu Item</code>, <code>Item Qty</code> and <code>Net Amount</code>. The <code>Item Qty (incl voids)</code> column is deliberately not used.</li>
+            <li><b>Item selection details</b> (<code>ItemSelectionDetails.csv</code>): one row per item ordered. <code>Qty</code> and <code>Net Price</code> are summed per <code>Menu Item</code>, rows with <code>Void?</code> = true are skipped, and <code>Order Date</code> (month-first, e.g. 10/2/26) sets the period.</li>
+          </ul>
+          <h3 id="square">Square</h3>
+          <p><b>Reports › Item Sales › Export › Detail CSV</b> (also under Transactions as Items Detail). Menu Margin sums <code>Qty</code> and <code>Net Sales</code> per <code>Item</code>. Refund rows carry negative quantities and amounts, so they net out of the month automatically.</p>
+
           <h3 id="generic">Any other POS</h3>
           <p>Any CSV with one row per item (or per sale line) works. Minimum: an item name column and a quantity column. Recognised headers include <code>Item</code>, <code>Menu Item</code>, <code>Product</code>, <code>Name</code>; <code>Qty</code>, <code>Quantity</code>, <code>Sold</code>, <code>Count</code>; and <code>Net Sales</code>, <code>Revenue</code>, <code>Gross Sales</code>. If revenue is missing, realised price falls back to your menu price.</p>
 
           <h2 id="prices">Supplier price lists and invoices</h2>
-          <p>Export or save your distributor’s order guide, price list or invoice as CSV. Recognised columns: <code>Item #</code> / <code>SKU</code> / <code>Item code</code>, <code>Description</code>, <code>Pack</code> / <code>Pack size</code>, <code>UOM</code> / <code>Unit</code>, <code>Case price</code> / <code>Unit price</code> / <code>Price</code>, <code>Vendor</code> / <code>Supplier</code>, <code>Invoice date</code>.</p>
+          <p>Export or save your distributor’s order guide, price list or invoice as CSV. Recognised columns: <code>Item #</code> / <code>SKU</code> / <code>Item code</code>, <code>Description</code>, <code>Pack</code> / <code>Pack size</code>, <code>Size</code>, <code>UOM</code> / <code>Unit</code>, <code>Case price</code> / <code>Case $</code> / <code>Unit price</code> / <code>Price</code>, <code>Vendor</code> / <code>Supplier</code>, <code>Invoice date</code>.</p>
           <ul>
+            <li>Foodservice pack notation is read as the total in one case: <code>6/5 LB</code> is 30 lb, <code>4/1 GAL</code> is 4 gal, <code>12/32 OZ</code> is 384 oz, <code>2/5#</code> is 10 lb. A <code>Pack</code> of 6 next to a <code>Size</code> of 5 LB means the same. Can sizes such as <code>6/#10</code> have no weight, so set those packs by hand.</li>
             <li>Lines match ingredients by supplier item code first, then exact name, then a fuzzy name match (72%+), which you can override per line.</li>
             <li>If the pack size changed but the unit is the same, the price is normalised to your current pack so history stays comparable. If the unit changed, the line is flagged for you to check.</li>
             <li>The diff shows increases, decreases, unchanged lines, lines not matched, and your ingredients from that supplier that were missing from the file.</li>
@@ -104,7 +116,7 @@ export default function Docs() {
           </ul>
 
           <h2 id="units">Units & densities</h2>
-          <p>Weight (g, kg, oz, lb), volume (ml, L, tsp, tbsp, cup, fl oz, qt, gal; US measures) and count (each, dozen) convert within their family exactly. Crossing families needs a density (g per ml) for weight↔volume, or an each-weight (g) for count↔weight. Typical densities: water/stock 1.00, cream 1.00, milk 1.03, oils 0.91–0.92, honey 1.42, flour 0.53, sugar 0.85. A recipe line that can’t convert shows a red message and contributes $0 until fixed; it is never silently guessed.</p>
+          <p>Weight (g, kg, oz, lb), volume (ml, L, tsp, tbsp, cup, fl oz, qt, gal; US measures) and count (each, dozen) convert within their family exactly. Crossing families needs a density (g per ml) for weight↔volume, or an each-weight (g) for count↔weight. Typical densities from USDA household measures: water/stock 1.00, heavy cream 1.006, whole milk 1.031, olive oil 0.913, canola oil 0.921, honey 1.433, all-purpose flour 0.528, granulated sugar 0.845. When an ingredient’s name matches a common food, the ingredient editor offers the USDA density or each-weight with its FoodData Central id, and ingredients created from a price list start with it filled in. A recipe line that can’t convert shows a red message and contributes $0 until fixed; it is never silently guessed.</p>
 
           <h2 id="engineering">Menu engineering</h2>
           <p>Menu Margin uses the Kasavana–Smith method (1982):</p>
@@ -124,6 +136,8 @@ export default function Docs() {
 
           <h2 id="assumptions">Assumptions</h2>
           <ul>
+            <li>Densities and each-weights offered in the ingredient editor come from USDA FoodData Central, SR Legacy (April 2018 release, public domain), <code>food_portion.csv</code> from <a href="https://fdc.nal.usda.gov/download-datasets">fdc.nal.usda.gov/download-datasets</a>, read in November 2026. Each suggestion shows its FDC id. Unit factors (1 lb = 453.59237 g, 1 US cup = 236.5882365 ml, 1 US fl oz = 29.5735295625 ml) are the exact NIST Handbook 44 definitions.</li>
+            <li>Lightspeed K-Series Product Mix columns follow the 21 columns listed in Lightspeed’s help article on the report (<a href="https://k-series-support.lightspeedhq.com/hc/articles/4403156004763">k-series-support.lightspeedhq.com</a>); the downloadable sample uses that exact header.</li>
             <li>Lightspeed export column names were checked against Lightspeed’s public help-centre articles in November 2026. Report layouts change; if yours differs, map the columns in step 1.</li>
             <li>All prices and sales are treated as tax excluded. Pick a tax-excluded column when the export has both.</li>
             <li>Default target food cost is 30%, popularity rule 70%, elasticity −0.8. All are editable per project.</li>

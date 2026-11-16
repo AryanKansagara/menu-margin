@@ -4,6 +4,7 @@ import { costPerPackUnit, usedBy } from '../engine/costing.ts'
 import { ingredientsCsv } from '../engine/outputs.ts'
 import type { Ingredient, Unit } from '../engine/types.ts'
 import { convert, dimOf, UNIT_LABEL, UNITS } from '../engine/units.ts'
+import { refDensity, refEach } from '../engine/reference.ts'
 import { download, Empty, Icon, Link, Modal, money, NumField, slug, toast } from '../ui.tsx'
 import { uid } from '../actions.ts'
 import { useP } from './ctx.ts'
@@ -35,6 +36,12 @@ export function IngredientEditor({ value, onSave, onCancel, onDelete }: { value:
   const f = <K extends keyof Ingredient>(k: K, v: Ingredient[K]) => set((x) => ({ ...x, [k]: v }))
   const [c, u] = normCost(i)
   const needsDensity = dimOf(i.packUnit) !== 'count'
+  const rd = refDensity(i.name)
+  const re = refEach(i.name)
+  const refs = [
+    rd && Math.abs((i.densityGPerMl ?? 0) - rd.value) > 0.0005 && { ...rd, label: `density ${rd.value} g/ml`, apply: () => f('densityGPerMl', rd.value) },
+    re && i.eachG !== re.value && { ...re, label: `${re.value} g each`, apply: () => f('eachG', re.value) },
+  ].filter((x) => !!x)
   return (
     <form className="editor" onSubmit={(e) => { e.preventDefault(); if (!i.name.trim()) { toast('Give the ingredient a name', { kind: 'err' }); return } onSave({ ...i, name: i.name.trim() }) }}>
       <div className="fgrid">
@@ -56,6 +63,11 @@ export function IngredientEditor({ value, onSave, onCancel, onDelete }: { value:
         <div className="field"><span>Density {needsDensity ? '' : '(optional)'}</span><NumField value={i.densityGPerMl ?? 0} onChange={(n) => f('densityGPerMl', n > 0 ? n : undefined)} suffix="g/ml" label="Density grams per millilitre" min={0} /></div>
         <div className="field"><span>Weight of one each</span><NumField value={i.eachG ?? 0} onChange={(n) => f('eachG', n > 0 ? n : undefined)} suffix="g" label="Grams per each" min={0} /></div>
       </div>
+      {refs.map((r) => (
+        <p key={r.fdcId} className="fine muted">
+          Reference: <button type="button" className="btn btn-ghost btn-sm" onClick={r.apply}>Use {r.label}</button> {r.source}
+        </p>
+      ))}
       <p className="calc">
         As purchased <b>{money(c, 2)}/{u}</b> · edible portion <b>{money(c / (i.yieldPct / 100), 2)}/{u}</b>
         <span className="muted"> · Density lets recipes use cups for a weighed item; each-weight lets “2 lemons” cost a by-the-kg item.</span>

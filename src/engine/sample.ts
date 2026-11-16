@@ -10,6 +10,7 @@ const PROD = 'Marché Fraîcheur'
 const DRY = 'Distribution Gagnon'
 const DAIRY = 'Laiterie Champêtre'
 
+// Densities (d, g/ml) and each-weights (e, g) follow USDA FoodData Central household measures where USDA lists the food (see reference.ts).
 const ING: I[] = [
   ['hanger', 'Hanger steak', 'Meat', MEAT, 'BL-1042', 'case', 5, 'kg', 168, 88],
   ['chicken', 'Chicken thighs, boneless', 'Meat', MEAT, 'BL-2210', 'case', 4, 'kg', 64, 95],
@@ -29,18 +30,18 @@ const ING: I[] = [
   ['lemon', 'Lemons', 'Produce', PROD, 'MF-060', 'case', 115, 'ea', 46, 100, { e: 110 }],
   ['herbs', 'Fresh thyme & parsley', 'Produce', PROD, 'MF-071', 'box', 500, 'g', 18, 75],
   ['butter', 'Butter, unsalted', 'Dairy', DAIRY, 'LC-10', 'case', 36, 'lb', 176, 100],
-  ['cream', 'Cream 35%', 'Dairy', DAIRY, 'LC-22', 'case', 8, 'l', 42, 100, { d: 1.0 }],
-  ['milk', 'Milk 3.25%', 'Dairy', DAIRY, 'LC-25', 'jug', 4, 'l', 7.2, 100, { d: 1.03 }],
+  ['cream', 'Cream 35%', 'Dairy', DAIRY, 'LC-22', 'case', 8, 'l', 42, 100, { d: 1.006 }],
+  ['milk', 'Milk 3.25%', 'Dairy', DAIRY, 'LC-25', 'jug', 4, 'l', 7.2, 100, { d: 1.031 }],
   ['eggs', 'Eggs, large', 'Dairy', DAIRY, 'LC-30', 'case', 15, 'dozen', 63, 100, { e: 50 }],
   ['gruyere', 'Gruyère', 'Dairy', DAIRY, 'LC-41', 'wheel cut', 2.5, 'kg', 86, 95],
   ['parmesan', 'Parmigiano Reggiano', 'Dairy', DAIRY, 'LC-42', 'piece', 2, 'kg', 78, 90],
   ['goatcheese', 'Goat cheese log', 'Dairy', DAIRY, 'LC-47', 'log', 1, 'kg', 31, 100],
-  ['flour', 'All-purpose flour', 'Dry goods', DRY, 'DG-100', 'bag', 20, 'kg', 24, 100, { d: 0.53 }],
-  ['sugar', 'Granulated sugar', 'Dry goods', DRY, 'DG-110', 'bag', 20, 'kg', 30, 100, { d: 0.85 }],
+  ['flour', 'All-purpose flour', 'Dry goods', DRY, 'DG-100', 'bag', 20, 'kg', 24, 100, { d: 0.528 }],
+  ['sugar', 'Granulated sugar', 'Dry goods', DRY, 'DG-110', 'bag', 20, 'kg', 30, 100, { d: 0.845 }],
   ['arborio', 'Arborio rice', 'Dry goods', DRY, 'DG-150', 'bag', 5, 'kg', 22, 100],
   ['choc', 'Dark chocolate 70%', 'Dry goods', DRY, 'DG-210', 'box', 2.5, 'kg', 72, 100],
-  ['oliveoil', 'Olive oil, extra virgin', 'Dry goods', DRY, 'DG-300', 'tin', 4, 'l', 38, 100, { d: 0.91 }],
-  ['canola', 'Canola fryer oil', 'Dry goods', DRY, 'DG-310', 'jug', 16, 'l', 42, 100, { d: 0.92 }],
+  ['oliveoil', 'Olive oil, extra virgin', 'Dry goods', DRY, 'DG-300', 'tin', 4, 'l', 38, 100, { d: 0.913 }],
+  ['canola', 'Canola fryer oil', 'Dry goods', DRY, 'DG-310', 'jug', 16, 'l', 42, 100, { d: 0.921 }],
   ['pepper', 'Black peppercorns', 'Dry goods', DRY, 'DG-401', 'tub', 500, 'g', 14, 100],
   ['salt', 'Kosher salt', 'Dry goods', DRY, 'DG-405', 'box', 1.36, 'kg', 6, 100],
   ['whitewine', 'Cooking white wine', 'Beverage', DRY, 'DG-501', 'box', 4, 'l', 34, 100, { d: 0.99 }],
@@ -176,17 +177,24 @@ export function sampleProject(): ProjectData {
 /** A Product Mix style export (K-Series column names) for the sample month, with POS names that differ from menu names. */
 export function sampleProductMixCsv(): string {
   const groups: Record<string, string> = { Mains: 'Food - Mains', Starters: 'Food - Starters', Sides: 'Food - Sides', Desserts: 'Food - Desserts' }
-  const head = ['Item name', 'Accounting group', 'Quantity', 'Sales (tax incl.)', 'Tax', 'Sales (tax excl.)', 'Zero priced count', 'Discounted amount', 'Discounted quantity', 'Costs']
+  // All 21 columns, in the order Lightspeed documents for the Product Mix report (the export always includes every column).
+  const head = ['Item name', 'Accounting group', 'Quantity', 'Sales (tax incl.)', 'Tax', 'Sales (tax excl.)', 'Zero priced count',
+    'Transaction amount (tax incl.)', 'Transaction amount (tax excl.)', 'Discounted amount', 'Discounted quantity', 'Offered amount',
+    'Offered quantity', 'Loss amount', 'Loss quantity', 'Returned amount', 'Returned quantity', 'Margin (tax incl.)', 'Margin (tax excl.)',
+    'Costs', 'Service charge']
   const rows: (string | number)[][] = MENU.map(([, , cat, price, pos, sold], i) => {
     const net = Math.round(sold * price * wobble(i) * 100) / 100
     const tax = Math.round(net * 0.14975 * 100) / 100
-    return [pos, groups[cat], sold, net + tax, tax, net, i % 5 === 0 ? 2 : 0, Math.round(sold * price * 0.02 * 100) / 100, Math.round(sold * 0.03), 0]
+    const disc = Math.round(sold * price * 0.02 * 100) / 100
+    const gross = Math.round((net + tax) * 100) / 100
+    return [pos, groups[cat], sold, gross, tax, net, i % 5 === 0 ? 2 : 0, Math.round((gross + disc) * 100) / 100, Math.round((net + disc) * 100) / 100,
+      disc, Math.round(sold * 0.03), i % 5 === 0 ? Math.round(price * 2 * 100) / 100 : 0, i % 5 === 0 ? 2 : 0, 0, 0, 0, 0, 0, 0, 0, 0]
   })
   // Unknown to the menu: a seasonal special and a staff meal line.
-  rows.push(['Special du jour - Bouillabaisse', 'Food - Mains', 42, 1497.3, 195.3, 1302, 0, 0, 0, 0])
-  rows.push(['Staff meal', 'Food - Mains', 61, 0, 0, 0, 61, 0, 0, 0])
+  rows.push(['Special du jour - Bouillabaisse', 'Food - Mains', 42, 1497.3, 195.3, 1302, 0, 1497.3, 1302, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+  rows.push(['Staff meal', 'Food - Mains', 61, 0, 0, 0, 61, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
   const total = rows.reduce((s, r) => s + (r[2] as number), 0)
-  return ['Product Mix Report', 'Bistro Mirabel,2026-10-01 - 2026-10-31', '', toCsv([head, ...rows, ['Total', '', total, '', '', '', '', '', '', '']])].join('\n')
+  return ['Product Mix Report', 'Bistro Mirabel,2026-10-01 - 2026-10-31', '', toCsv([head, ...rows, ['Total', '', total, ...head.slice(3).map(() => '')]])].join('\n')
 }
 
 /** A supplier price list for November with a beef and butter spike. */
