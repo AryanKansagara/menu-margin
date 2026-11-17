@@ -21,7 +21,7 @@ Most owners and chefs know their sales to the dollar and their plate cost roughl
 - **Workspace**: multiple projects stored locally (IndexedDB), monthly snapshots with compare, undo, optional sign-in to sync across devices.
 - A synthetic sample bistro (35 ingredients, 6 sub-recipes, 18 menu items, one month of sales).
 
-Not affiliated with Lightspeed; it reads files Lightspeed and other POS systems let you export.
+Reads the files Lightspeed and other POS systems let you export.
 
 ## Run locally
 

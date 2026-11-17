@@ -141,7 +141,7 @@ export default function Docs() {
             <li>Lightspeed export column names were checked against Lightspeed’s public help-centre articles in November 2026. Report layouts change; if yours differs, map the columns in step 1.</li>
             <li>All prices and sales are treated as tax excluded. Pick a tax-excluded column when the export has both.</li>
             <li>Default target food cost is 30%, popularity rule 70%, elasticity −0.8. All are editable per project.</li>
-            <li>Menu Margin is an independent tool. It is not made by, affiliated with, or endorsed by Lightspeed; it simply reads files that Lightspeed and other POS systems let you export.</li>
+            <li>Menu Margin reads files that Lightspeed and other POS systems let you export.</li>
           </ul>
         </article>
       </main>

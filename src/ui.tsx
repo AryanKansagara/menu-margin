@@ -216,7 +216,7 @@ export function Footer() {
           <Link to="/docs#formats">Import formats</Link>
           <Link to="/settings">Settings</Link>
         </nav>
-        <p className="foot-note">Built by Aryan Kansagara. Independent project, not affiliated with Lightspeed.</p>
+        <p className="foot-note">Built by Aryan Kansagara.</p>
       </div>
     </footer>
   )
