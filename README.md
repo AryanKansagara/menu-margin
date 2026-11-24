@@ -30,6 +30,15 @@ npm install
 npm run dev      # http://localhost:5173
 npm test         # engine tests
 npm run build
+npm run test:e2e # browser tests, see below
 ```
 
 Optional cloud sync reads `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` from `.env`. Without them the app runs fully local.
+
+## Tests
+
+- `npm test` runs the engine unit tests (Node's built-in test runner).
+- `npm run test:e2e` builds the app and runs the Playwright (Chromium) suite in `e2e/` against that production build, served by `vite preview` on port 4173 (set `E2E_PORT` to use another). It opens the sample bistro, edits a price, imports a price list and a POS export, feeds the importers unusable files, and reloads to check persistence. Every test runs signed out in a fresh browser profile with all external network traffic blocked, and fails on any uncaught page error. The test data is synthetic.
+- First time only: `npx playwright install chromium` (add `--with-deps` on a fresh Linux machine).
+
+GitHub Actions (`.github/workflows/ci.yml`) runs `npm ci`, the build, the unit tests and the E2E suite on every pull request and push to `main`.
