@@ -219,6 +219,11 @@ test.describe('files the app cannot use', () => {
       await page.locator('input[type=file]').setInputFiles({ name: 'unusable.csv', mimeType: 'text/csv', buffer })
 
       await expect(page.getByText('unusable.csv · 0 priced lines · 2 problems')).toBeVisible()
+      // Nothing was read, so the notice is an error and nothing claims the dishes are fine.
+      await expect(page.locator('.notice-err')).toContainText('No prices could be read from this file')
+      await expect(page.locator('.notice').filter({ hasText: 'unusable.csv' }).locator('svg')).toHaveCount(1)
+      await expect(page.getByText('Every dish stays at or under target')).toHaveCount(0)
+      await expect(page.getByRole('heading', { name: /Dishes this pushes past/ })).toHaveCount(0)
       const issues = page.locator('.issues-list')
       await expect(issues).toContainText('Map a description or item-code column')
       await expect(issues).toContainText('Map a price column')
@@ -228,9 +233,26 @@ test.describe('files the app cannot use', () => {
       await page.getByRole('button', { name: 'Cancel' }).click()
       await page.locator('input[type=file]').setInputFiles(csv('synthetic-prices.csv', PRICE_LIST))
       await expect(page.getByText('synthetic-prices.csv · 4 priced lines')).toBeVisible()
+      await expect(page.locator('.notice-err')).toHaveCount(0)
+      await expect(page.getByRole('heading', { name: /Dishes this pushes past/ })).toBeVisible()
       await expect(page.getByRole('button', { name: /^Apply 2 price changes/ })).toBeEnabled()
     })
   }
+
+  test('price importer recovers once the columns are mapped by hand', async ({ page }) => {
+    await openSample(page)
+    await openTab(page, /^Price imports/)
+    await page.locator('input[type=file]').setInputFiles(csv('odd-columns.csv', 'Thing,Amt\nHANGER STEAK AAA,190\nBUTTER UNSALTED 1LB,150\n'))
+    await expect(page.locator('.notice-err')).toContainText('No prices could be read from this file')
+    await expect(page.getByText('Every dish stays at or under target')).toHaveCount(0)
+
+    await page.locator('summary', { hasText: 'Column mapping' }).click()
+    await page.locator('label.field').filter({ hasText: /^Description/ }).locator('select').selectOption({ label: 'Thing' })
+    await page.locator('label.field').filter({ hasText: /^Price/ }).locator('select').selectOption({ label: 'Amt' })
+    await expect(page.getByText('odd-columns.csv · 2 priced lines')).toBeVisible()
+    await expect(page.locator('.notice-err')).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: /Dishes this pushes past/ })).toBeVisible()
+  })
 
   test('a file over 25 MB is refused with a message', async ({ page }) => {
     await openSample(page)
@@ -241,14 +263,63 @@ test.describe('files the app cannot use', () => {
     await expect(page.getByText('Drop a POS item-sales export')).toBeVisible()
   })
 
-  test('restoring something that is not a backup says so and keeps existing projects', async ({ page }) => {
-    await openSample(page)
+  const notBackup: [string, string | Buffer][] = [
+    ['JSON that is not a backup', '{"hello": "world"}'],
+    ['text that is not JSON', 'Hello, not json'],
+    ['an empty file', ''],
+    ['a truncated backup', '{"app":"menu-margin","projects":[{"id":"a","na'],
+    ['a project with no data', '{"projects":[{"id":"a","name":"x"}]}'],
+    ['a PNG renamed .json', Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(40, 7)])],
+  ]
+  const restoreFile = async (page: Page, buffer: Buffer) => {
     await page.goto('/app')
-    await expect(page.getByRole('heading', { name: 'Bistro Mirabel (sample)' })).toBeVisible()
     await page.getByRole('button', { name: /Restore backup/ }).click()
-    await page.locator('dialog input[type=file]').setInputFiles({ name: 'notes.json', mimeType: 'application/json', buffer: Buffer.from('{"hello": "world"}') })
-    await expect(page.getByRole('status')).toContainText('Not a Menu Margin backup')
+    await page.locator('dialog input[type=file]').setInputFiles({ name: 'backup.json', mimeType: 'application/json', buffer })
+  }
+
+  for (const [what, content] of notBackup) {
+    test(`restoring ${what} says it is not a backup and keeps existing projects`, async ({ page }) => {
+      await openSample(page)
+      await restoreFile(page, Buffer.from(content))
+      const note = page.getByRole('dialog', { name: 'Restore from backup' }).getByRole('alert')
+      await expect(note).toHaveText('This file is not a Menu Margin backup.')
+      await expect(page.getByRole('status')).not.toContainText(/Unexpected|JSON|Restored/)
+      await page.keyboard.press('Escape')
+      await expect(page.getByRole('heading', { name: 'Bistro Mirabel (sample)' })).toBeVisible()
+      await expect(page.locator('.pcard')).toHaveCount(1)
+    })
+  }
+
+  test('restoring a backup with no projects says so instead of reporting a restore', async ({ page }) => {
+    await openSample(page)
+    await restoreFile(page, Buffer.from('{"projects":[]}'))
+    await expect(page.getByRole('dialog', { name: 'Restore from backup' }).getByRole('alert')).toContainText('no projects in it, so nothing was restored')
+    await expect(page.getByRole('status')).not.toContainText('Restored')
+    await expect(page.locator('.toast-ok')).toHaveCount(0)
     await page.keyboard.press('Escape')
+    await expect(page.locator('.pcard')).toHaveCount(1)
+  })
+
+  test('a bad backup does not block choosing a good one straight afterwards', async ({ page }) => {
+    await openSample(page)
+    const rec = await storedProject(page)
+    await restoreFile(page, Buffer.from('Hello, not json'))
+    const dialog = page.getByRole('dialog', { name: 'Restore from backup' })
+    await expect(dialog.getByRole('alert')).toHaveText('This file is not a Menu Margin backup.')
+    await dialog.locator('input[type=file]').setInputFiles({ name: 'backup.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ app: 'menu-margin', projects: [rec] })) })
+    await expect(page.getByRole('status')).toContainText('Restored 1 project')
+    await expect(dialog).toBeHidden()
+  })
+
+  test('restoring a real backup brings the project back', async ({ page }) => {
+    await openSample(page)
+    const rec = await storedProject(page)
+    await page.goto('/app')
+    // Delete it, then restore it from the backup text.
+    await page.getByRole('button', { name: /Delete/ }).click()
+    await expect(page.locator('.pcard')).toHaveCount(0)
+    await restoreFile(page, Buffer.from(JSON.stringify({ app: 'menu-margin', projects: [rec] })))
+    await expect(page.getByRole('status')).toContainText('Restored 1 project')
     await expect(page.getByRole('heading', { name: 'Bistro Mirabel (sample)' })).toBeVisible()
   })
 })

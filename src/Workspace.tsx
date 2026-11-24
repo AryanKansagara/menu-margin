@@ -4,7 +4,7 @@ import { kpis } from './engine/outputs.ts'
 import { deleteProject, listProjects, listSnapshots, onStoreChange, putProject, putSnapshot, newProject, type ProjectRec } from './store.ts'
 import { queueCloudDelete } from './sync.ts'
 import { DropZone, Empty, Footer, Header, Icon, Link, Modal, money, pct, setCurrency, toast } from './ui.tsx'
-import type { Snapshot } from './engine/outputs.ts'
+import { readBackup } from './engine/backup.ts'
 
 function useProjects() {
   const [list, setList] = useState<ProjectRec[] | null>(null)
@@ -76,15 +76,20 @@ export default function Workspace() {
   const [name, setName] = useState('')
   const [restoring, setRestoring] = useState(false)
 
+  // A toast sits behind the dialog's backdrop, so problems with the file are shown inside the dialog.
+  const [restoreNote, setRestoreNote] = useState<{ text: string; kind: 'err' | 'warn' } | null>(null)
+  const closeRestore = () => { setRestoring(false); setRestoreNote(null) }
+
   const restore = async (text: string) => {
+    const b = readBackup(text)
+    if (b.kind === 'invalid') { setRestoreNote({ text: 'This file is not a Menu Margin backup.', kind: 'err' }); return }
+    if (b.kind === 'empty') { setRestoreNote({ text: 'This backup has no projects in it, so nothing was restored.', kind: 'warn' }); return }
     try {
-      const j = JSON.parse(text) as { projects?: ProjectRec[]; snapshots?: Snapshot[] }
-      if (!Array.isArray(j.projects)) throw new Error('Not a Menu Margin backup')
-      for (const p of j.projects) await putProject(p)
-      for (const s of j.snapshots ?? []) await putSnapshot(s)
-      toast(`Restored ${j.projects.length} project${j.projects.length === 1 ? '' : 's'}`, { kind: 'ok' })
-      setRestoring(false)
-    } catch (e) { toast((e as Error).message, { kind: 'err' }) }
+      for (const p of b.projects) await putProject(p)
+      for (const s of b.snapshots) await putSnapshot(s)
+      toast(`Restored ${b.projects.length} project${b.projects.length === 1 ? '' : 's'}`, { kind: 'ok' })
+      closeRestore()
+    } catch { setRestoreNote({ text: 'Could not save the whole backup in this browser. Some projects may already have been restored.', kind: 'err' }) }
   }
 
   return (
@@ -98,7 +103,7 @@ export default function Workspace() {
             <p className="muted">Each project is one restaurant or concept, with its own prices, recipes, menu, sales and monthly snapshots.</p>
           </div>
           <div className="ws-acts">
-            <button className="btn btn-ghost" onClick={() => setRestoring(true)}><Icon name="upload" size={16} /> Restore backup</button>
+            <button className="btn btn-ghost" onClick={() => { setRestoreNote(null); setRestoring(true) }}><Icon name="upload" size={16} /> Restore backup</button>
             <button className="btn btn-secondary" onClick={() => createSample()}>Try the sample</button>
             <button className="btn btn-primary" onClick={() => setNaming(true)}><Icon name="plus" size={16} /> New project</button>
           </div>
@@ -139,9 +144,10 @@ export default function Workspace() {
         </form>
       </Modal>
 
-      <Modal open={restoring} onClose={() => setRestoring(false)} title="Restore from backup">
+      <Modal open={restoring} onClose={closeRestore} title="Restore from backup">
         <p className="muted">Choose a JSON file exported from Settings › Export all my data. Projects with the same id are overwritten.</p>
-        <DropZone label="Drop a Menu Margin backup (.json)" onText={restore} />
+        <DropZone label="Drop a Menu Margin backup (.json)" onText={(t) => { setRestoreNote(null); restore(t) }} />
+        {restoreNote && <div className={`notice ${restoreNote.kind === 'err' ? 'notice-err' : 'notice-warn'}`} role="alert"><Icon name="alert" /> <span>{restoreNote.text}</span></div>}
       </Modal>
     </>
   )

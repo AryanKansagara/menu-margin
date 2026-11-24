@@ -59,6 +59,8 @@ function Importer({ onDone }: { onDone: () => void }) {
   )
 
   const m = parsed.mapping
+  // Nothing was read, so no statement about prices (or about dishes staying under target) is true.
+  const unread = parsed.lines.length === 0
   const colSel = (k: keyof PriceMapping, lbl: string) => (
     <label className="field"><span>{lbl}</span>
       <select value={m[k]} onChange={(e) => setMap({ ...m, [k]: +e.target.value })}>
@@ -86,7 +88,7 @@ function Importer({ onDone }: { onDone: () => void }) {
 
   return (
     <div className="stack">
-      <div className="notice"><Icon name="check" /> {file.name} · {parsed.lines.length} priced lines{parsed.issues.length ? ` · ${parsed.issues.length} problems` : ''}</div>
+      <div className={`notice ${unread ? 'notice-err' : ''}`}><Icon name={unread ? 'alert' : 'check'} /> <span>{file.name} · {parsed.lines.length} priced lines{parsed.issues.length ? ` · ${parsed.issues.length} problems` : ''}{unread && <>. No prices could be read from this file. Check the column mapping below or choose another file.</>}</span></div>
       <details className="mapbox"><summary>Column mapping</summary>
         <div className="fgrid fgrid-3">{colSel('name', 'Description')}{colSel('code', 'Item code')}{colSel('price', 'Price')}{colSel('supplier', 'Supplier')}{colSel('packQty', 'Pack (count or 6/5 LB)')}{colSel('size', 'Unit size')}{colSel('packUnit', 'Pack unit')}{colSel('date', 'Date')}</div>
       </details>
@@ -125,10 +127,12 @@ function Importer({ onDone }: { onDone: () => void }) {
       </div>
       {diff.missing.length > 0 && <p className="muted fine">Not on this file but from the same supplier: {diff.missing.map((i) => i.name).join(', ')}. Their prices are left as they are.</p>}
 
-      <section className={`alerts ${preview.alerts.length ? 'alerts-on' : ''}`}>
-        <h3><Icon name="alert" /> Dishes this pushes past your {data.settings.targetFcPct}% target</h3>
-        {preview.alerts.length === 0 ? <p className="muted">None. Every dish stays at or under target after these prices.</p> : <AlertList alerts={preview.alerts.map((a) => ({ ...a, driver: a.driver?.name }))} />}
-      </section>
+      {!unread && (
+        <section className={`alerts ${preview.alerts.length ? 'alerts-on' : ''}`}>
+          <h3><Icon name="alert" /> Dishes this pushes past your {data.settings.targetFcPct}% target</h3>
+          {preview.alerts.length === 0 ? <p className="muted">None. Every dish stays at or under target after these prices.</p> : <AlertList alerts={preview.alerts.map((a) => ({ ...a, driver: a.driver?.name }))} />}
+        </section>
+      )}
       <div className="modal-acts">
         <label className="field-inline">Effective date <input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
         <button className="btn btn-ghost" onClick={() => setFile(null)}>Cancel</button>
