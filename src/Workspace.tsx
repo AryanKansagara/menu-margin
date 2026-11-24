@@ -89,7 +89,7 @@ export default function Workspace() {
       for (const s of b.snapshots) await putSnapshot(s)
       toast(`Restored ${b.projects.length} project${b.projects.length === 1 ? '' : 's'}`, { kind: 'ok' })
       closeRestore()
-    } catch { setRestoreNote({ text: 'Could not save the backup in this browser. Nothing else was changed.', kind: 'err' }) }
+    } catch { setRestoreNote({ text: 'Could not save the whole backup in this browser. Some projects may already have been restored.', kind: 'err' }) }
   }
 
   return (
